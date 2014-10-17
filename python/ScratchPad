@@ -1,0 +1,16 @@
+ScratchPad
+
+# pycaffe draw mnist net test bash script
+./draw_net.py ../examples/mnist/mnist_autoencoder.prototxt mnist_ae_graph.jpg
+
+# pycaffe play python script
+import caffe, sys, os
+
+net = caffe.Net('../examples/imagenet/imagenet_deploy.prototxt', '../examples/imagenet/caffe_reference_imagenet_model')
+
+net_tv = caffe.Net('../examples/imagenet/imagenet_train_val.prototxt')
+
+
+# ilsvrc 2012 images
+http://www.image-net.org/challenges/LSVRC/2012/nonpub/ILSVRC2012_img_train.tar
+http://www.image-net.org/challenges/LSVRC/2012/nonpub/ILSVRC2012_img_val.tar
