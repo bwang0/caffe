@@ -240,6 +240,8 @@ message LayerParameter {
     TANH = 23;
     WINDOW_DATA = 24;
     THRESHOLD = 31;
+    
+    RESHAPE = 39;
   }
   optional LayerType type = 5; // the layer type from the enum above
 
@@ -285,6 +287,8 @@ message LayerParameter {
   optional ThresholdParameter threshold_param = 25;
   optional HingeLossParameter hinge_loss_param = 29;
   optional SliceParameter slice_param = 31;
+
+  optional ReshapeParameter reshape_param = 42;
 
   // DEPRECATED: The layer parameters specified as a V0LayerParameter.
   // This should never be used by any code except to upgrade to the new
@@ -560,6 +564,19 @@ message WindowDataParameter {
   // warp: cropped window is warped to a fixed size and aspect ratio
   // square: the tightest square around the window is cropped
   optional string crop_mode = 11 [default = "warp"];
+}
+
+// Message that stores parameters used by ReshapeLayer
+message ReshapeParameter {
+  // Specify the output dimensions. If some of the following parameters are
+  // omitted or set to 0 explicitly, the corresponding dimension from the bottom
+  // layer is used (unchanged). Also, if exactly one of them is set to -1, its
+  // value is calculated from the count of the bottom layer and the remaining
+  // dimensions, if possible.
+  optional int32 num = 1 [default = 0];
+  optional int32 channels = 2 [default = 0];
+  optional int32 height = 3 [default = 0];
+  optional int32 width = 4 [default = 0];
 }
 
 // DEPRECATED: V0LayerParameter is the old way of specifying layer parameters
