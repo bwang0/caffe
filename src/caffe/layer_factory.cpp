@@ -81,6 +81,14 @@ Layer<Dtype>* GetLayer(const LayerParameter& param) {
     return new TanHLayer<Dtype>(param);
   case LayerParameter_LayerType_WINDOW_DATA:
     return new WindowDataLayer<Dtype>(param);
+
+  case LayerParameter_LayerType_UPSAMPLING:
+    return new UpsamplingLayer<Dtype>(param);
+  case LayerParameter_LayerType_UNPOOLING:
+    return new UnpoolingLayer<Dtype>(param);
+  case LayerParameter_LayerType_RESHAPE:
+    return new ReshapeLayer<Dtype>(param);
+
   case LayerParameter_LayerType_NONE:
     LOG(FATAL) << "Layer " << name << " has unspecified type.";
   default:

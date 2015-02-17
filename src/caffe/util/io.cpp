@@ -13,6 +13,8 @@
 #include <string>
 #include <vector>
 
+#include <iostream>
+
 #include "caffe/common.hpp"
 #include "caffe/proto/caffe.pb.h"
 #include "caffe/util/io.hpp"
@@ -76,6 +78,66 @@ bool ReadImageToDatum(const string& filename, const int label,
   } else {
     cv_img = cv::imread(filename, cv_read_flag);
   }
+  if (!cv_img.data) {
+    LOG(ERROR) << "Could not open or find file " << filename;
+    return false;
+  }
+  int num_channels = (is_color ? 3 : 1);
+  datum->set_channels(num_channels);
+  datum->set_height(cv_img.rows);
+  datum->set_width(cv_img.cols);
+  datum->set_label(label);
+  datum->clear_data();
+  datum->clear_float_data();
+  string* datum_string = datum->mutable_data();
+  if (is_color) {
+    for (int c = 0; c < num_channels; ++c) {
+      for (int h = 0; h < cv_img.rows; ++h) {
+        for (int w = 0; w < cv_img.cols; ++w) {
+          datum_string->push_back(
+            static_cast<char>(cv_img.at<cv::Vec3b>(h, w)[c]));
+        }
+      }
+    }
+  } else {  // Faster than repeatedly testing is_color for each pixel w/i loop
+    for (int h = 0; h < cv_img.rows; ++h) {
+      for (int w = 0; w < cv_img.cols; ++w) {
+        datum_string->push_back(
+          static_cast<char>(cv_img.at<uchar>(h, w)));
+        }
+      }
+  }
+  return true;
+}
+
+
+
+bool ReadCroppedImageToDatum(const string& filename, const int label,
+    const int height, const int width, const bool is_color, Datum* datum,
+    int row_min, int col_min, int row_max, int col_max) {
+  cv::Mat cv_img;
+  int cv_read_flag = (is_color ? CV_LOAD_IMAGE_COLOR :
+    CV_LOAD_IMAGE_GRAYSCALE);
+  CHECK_GE(row_max-row_min, 0);
+  CHECK_GE(col_max-col_min, 0);
+  if (row_max-row_min == 0 || col_max-col_min == 0) {
+    cv::Mat cv_img_origin = cv::imread(filename, cv_read_flag);
+    cv::resize(cv_img_origin, cv_img, cv::Size(width, height));
+  } else {
+    cv::Mat cv_img_origin = cv::imread(filename, cv_read_flag);
+    if(row_min < 0) row_min = 0;
+    if(col_min < 0) col_min = 0;
+    if(row_max > cv_img_origin.rows) row_max = cv_img_origin.rows;
+    if(col_max > cv_img_origin.cols) col_max = cv_img_origin.cols;
+
+    //std::cout<<filename<<std::endl;
+    //std::cout<<row_min<<" "<<col_min<<" "<<row_max<<" "<<col_max<<std::endl;
+    //std::cout<<cv_img_origin.rows<<" "<<cv_img_origin.cols<<std::endl;
+
+    cv::Rect roi(col_min, row_min, col_max-col_min, row_max-row_min);
+    cv::resize(cv_img_origin(roi), cv_img, cv::Size(width, height));
+  }
+  
   if (!cv_img.data) {
     LOG(ERROR) << "Could not open or find file " << filename;
     return false;

@@ -57,6 +57,10 @@ inline void WriteProtoToBinaryFile(
   WriteProtoToBinaryFile(proto, filename.c_str());
 }
 
+bool ReadCroppedImageToDatum(const string& filename, const int label,
+    const int height, const int width, const bool is_color, Datum* datum,
+    const int row_min, const int col_min, const int row_max, const int col_max);
+
 bool ReadImageToDatum(const string& filename, const int label,
     const int height, const int width, const bool is_color, Datum* datum);
 
@@ -69,6 +73,7 @@ inline bool ReadImageToDatum(const string& filename, const int label,
     Datum* datum) {
   return ReadImageToDatum(filename, label, 0, 0, datum);
 }
+
 
 
 template <typename Dtype>

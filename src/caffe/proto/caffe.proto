@@ -201,7 +201,7 @@ message LayerParameter {
   // line above the enum. Update the next available ID when you add a new
   // LayerType.
   //
-  // LayerType next available ID: 34 (last added: SLICE)
+  // LayerType next available ID: 37 (last added: UPSAMPLING)
   enum LayerType {
     // "NONE" layer type is 0th enum element so that we don't cause confusion
     // by defaulting to an existent LayerType (instead, should usually error if
@@ -241,7 +241,9 @@ message LayerParameter {
     WINDOW_DATA = 24;
     THRESHOLD = 31;
     
-    RESHAPE = 39;
+    RESHAPE = 34;
+    UNPOOLING = 35;
+    UPSAMPLING = 36;
   }
   optional LayerType type = 5; // the layer type from the enum above
 
@@ -566,6 +568,11 @@ message WindowDataParameter {
   optional string crop_mode = 11 [default = "warp"];
 }
 
+
+
+
+
+
 // Message that stores parameters used by ReshapeLayer
 message ReshapeParameter {
   // Specify the output dimensions. If some of the following parameters are
@@ -578,6 +585,38 @@ message ReshapeParameter {
   optional int32 height = 3 [default = 0];
   optional int32 width = 4 [default = 0];
 }
+
+// Message that stores parameters used by UpsamplingLayer
+message UpsamplingParameter {
+  // Kernel size is given as a single value for equal
+  // dimensions in height and width or as Y, X pairs.
+  optional uint32 kernel_size = 1 [default = 2]; // The kernel size (square)
+  optional uint32 kernel_h = 2 [default = 2]; // The kernel height
+  optional uint32 kernel_w = 3 [default = 2]; // The kernel width
+}
+
+// Message that stores parameters used by UnpoolingLayer
+message UnpoolingParameter {
+  enum UnpoolMethod {
+    MAX = 0;
+    AVE = 1;
+    STOCHASTIC = 2;
+  }
+  optional UnpoolMethod unpool = 1 [default = MAX]; // The unpooling method
+  // Pad, kernel size, and stride are all given as a single value for equal
+  // dimensions in height and width or as Y, X pairs.
+  optional uint32 pad = 4 [default = 0]; // The padding size (equal in Y, X)
+  optional uint32 pad_h = 9 [default = 0]; // The padding height
+  optional uint32 pad_w = 10 [default = 0]; // The padding width
+  optional uint32 kernel_size = 2; // The kernel size (square)
+  optional uint32 kernel_h = 5; // The kernel height
+  optional uint32 kernel_w = 6; // The kernel width
+  optional uint32 stride = 3 [default = 1]; // The stride (equal in Y, X)
+  optional uint32 stride_h = 7; // The stride height
+  optional uint32 stride_w = 8; // The stride width
+}
+
+
 
 // DEPRECATED: V0LayerParameter is the old way of specifying layer parameters
 // in Caffe.  We keep this message type around for legacy support.
