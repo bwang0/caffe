@@ -7,11 +7,9 @@
 namespace caffe {
 
 template <typename Dtype>
-Dtype ReshapeLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom,
+void ReshapeLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom,
       const vector<Blob<Dtype>*>& top) {
   top[0]->ShareData(*bottom[0]);
-
-  return Dtype(0.);
 }
 
 template <typename Dtype>
