@@ -35,12 +35,14 @@ void GlobalInit(int* pargc, char*** pargv) {
   ::gflags::ParseCommandLineFlags(pargc, pargv, true);
   // Google logging.
   ::google::InitGoogleLogging(*(pargv)[0]);
+  // Provide a backtrace on segfault.
+  ::google::InstallFailureSignalHandler();
 }
 
 #ifdef CPU_ONLY  // CPU-only Caffe.
 
 Caffe::Caffe()
-    : random_generator_(), mode_(Caffe::CPU), phase_(Caffe::TRAIN) { }
+    : random_generator_(), mode_(Caffe::CPU) { }
 
 Caffe::~Caffe() { }
 
@@ -84,7 +86,7 @@ void* Caffe::RNG::generator() {
 
 Caffe::Caffe()
     : cublas_handle_(NULL), curand_generator_(NULL), random_generator_(),
-    mode_(Caffe::CPU), phase_(Caffe::TRAIN) {
+    mode_(Caffe::CPU) {
   // Try to create a cublas handler, and report an error if failed (but we will
   // keep the program running as one might just want to run CPU code).
   if (cublasCreate(&cublas_handle_) != CUBLAS_STATUS_SUCCESS) {
@@ -108,15 +110,11 @@ Caffe::~Caffe() {
 
 void Caffe::set_random_seed(const unsigned int seed) {
   // Curand seed
-  // Yangqing's note: simply setting the generator seed does not seem to
-  // work on the tesla K20s, so I wrote the ugly reset thing below.
   static bool g_curand_availability_logged = false;
   if (Get().curand_generator_) {
-    CURAND_CHECK(curandDestroyGenerator(curand_generator()));
-    CURAND_CHECK(curandCreateGenerator(&Get().curand_generator_,
-        CURAND_RNG_PSEUDO_DEFAULT));
     CURAND_CHECK(curandSetPseudoRandomGeneratorSeed(curand_generator(),
         seed));
+    CURAND_CHECK(curandSetGeneratorOffset(curand_generator(), 0));
   } else {
     if (!g_curand_availability_logged) {
         LOG(ERROR) <<
@@ -227,6 +225,10 @@ const char* cublasGetErrorString(cublasStatus_t error) {
 #if CUDA_VERSION >= 6000
   case CUBLAS_STATUS_NOT_SUPPORTED:
     return "CUBLAS_STATUS_NOT_SUPPORTED";
+#endif
+#if CUDA_VERSION >= 6050
+  case CUBLAS_STATUS_LICENSE_ERROR:
+    return "CUBLAS_STATUS_LICENSE_ERROR";
 #endif
   }
   return "Unknown cublas status";

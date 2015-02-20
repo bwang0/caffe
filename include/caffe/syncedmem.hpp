@@ -24,6 +24,7 @@ namespace caffe {
 
 inline void CaffeMallocHost(void** ptr, size_t size) {
   *ptr = malloc(size);
+  CHECK(*ptr) << "host allocation of size " << size << " failed";
 }
 
 inline void CaffeFreeHost(void* ptr) {
@@ -31,6 +32,12 @@ inline void CaffeFreeHost(void* ptr) {
 }
 
 
+/**
+ * @brief Manages memory allocation and synchronization between the host (CPU)
+ *        and device (GPU).
+ *
+ * TODO(dox): more thorough description.
+ */
 class SyncedMemory {
  public:
   SyncedMemory()

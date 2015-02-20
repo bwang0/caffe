@@ -1,9 +1,10 @@
 #!/usr/bin/env sh
-# Create the imagenet leveldb inputs
+# Create the imagenet lmdb inputs
 # N.B. set the path to the imagenet train + val data dirs
 
-TOOLS=../../build/tools
-DATA=../../data/ilsvrc12
+EXAMPLE=examples/imagenet
+DATA=data/ilsvrc12
+TOOLS=build/tools
 
 TRAIN_DATA_ROOT=/mnt/neocortex/scratch/kihyuks/data/imagenet2012/train/
 VAL_DATA_ROOT=/mnt/neocortex/scratch/kihyuks/data/imagenet2012/val/
@@ -33,22 +34,24 @@ if [ ! -d "$VAL_DATA_ROOT" ]; then
   exit 1
 fi
 
-echo "Creating train leveldb..."
+echo "Creating train lmdb..."
 
-GLOG_logtostderr=1 $TOOLS/convert_imageset.bin \
+GLOG_logtostderr=1 $TOOLS/convert_imageset \
+    --resize_height=$RESIZE_HEIGHT \
+    --resize_width=$RESIZE_WIDTH \
+    --shuffle \
     $TRAIN_DATA_ROOT \
     $DATA/train.txt \
-    ilsvrc12_train_leveldb 1 \
-    leveldb \
-    $RESIZE_HEIGHT $RESIZE_WIDTH
+    $EXAMPLE/ilsvrc12_train_lmdb
 
-echo "Creating val leveldb..."
+echo "Creating val lmdb..."
 
-GLOG_logtostderr=1 $TOOLS/convert_imageset.bin \
+GLOG_logtostderr=1 $TOOLS/convert_imageset \
+    --resize_height=$RESIZE_HEIGHT \
+    --resize_width=$RESIZE_WIDTH \
+    --shuffle \
     $VAL_DATA_ROOT \
     $DATA/val.txt \
-    ilsvrc12_val_leveldb 1 \
-    leveldb \
-    $RESIZE_HEIGHT $RESIZE_WIDTH
+    $EXAMPLE/ilsvrc12_val_lmdb
 
 echo "Done."

@@ -87,17 +87,36 @@ int train() {
   caffe::SolverParameter solver_param;
   caffe::ReadProtoFromTextFileOrDie(FLAGS_solver, &solver_param);
 
+  // If the gpu flag is not provided, allow the mode and device to be set
+  // in the solver prototxt.
+  if (FLAGS_gpu < 0
+      && solver_param.solver_mode() == caffe::SolverParameter_SolverMode_GPU) {
+    FLAGS_gpu = solver_param.device_id();
+  }
+
+  // Set device id and mode
+  if (FLAGS_gpu >= 0) {
+    LOG(INFO) << "Use GPU with device ID " << FLAGS_gpu;
+    Caffe::SetDevice(FLAGS_gpu);
+    Caffe::set_mode(Caffe::GPU);
+  } else {
+    LOG(INFO) << "Use CPU.";
+    Caffe::set_mode(Caffe::CPU);
+  }
+
   LOG(INFO) << "Starting Optimization";
-  caffe::SGDSolver<float> solver(solver_param);
+  shared_ptr<caffe::Solver<float> >
+    solver(caffe::GetSolver<float>(solver_param));
+
   if (FLAGS_snapshot.size()) {
     LOG(INFO) << "Resuming from " << FLAGS_snapshot;
-    solver.Solve(FLAGS_snapshot);
+    solver->Solve(FLAGS_snapshot);
   } else if (FLAGS_weights.size()) {
     LOG(INFO) << "Finetuning from " << FLAGS_weights;
-    solver.net()->CopyTrainedLayersFrom(FLAGS_weights);
-    solver.Solve();
+    solver->net()->CopyTrainedLayersFrom(FLAGS_weights);
+    solver->Solve();
   } else {
-    solver.Solve();
+    solver->Solve();
   }
   LOG(INFO) << "Optimization Done.";
   return 0;
@@ -120,19 +139,51 @@ int test() {
     Caffe::set_mode(Caffe::CPU);
   }
   // Instantiate the caffe net.
-  Caffe::set_phase(Caffe::TEST);
-  Net<float> caffe_net(FLAGS_model);
+  Net<float> caffe_net(FLAGS_model, caffe::TEST);
   caffe_net.CopyTrainedLayersFrom(FLAGS_weights);
   LOG(INFO) << "Running for " << FLAGS_iterations << " iterations.";
 
-  double test_score = 0;
+  vector<Blob<float>* > bottom_vec;
+  vector<int> test_score_output_id;
+  vector<float> test_score;
+  float loss = 0;
   for (int i = 0; i < FLAGS_iterations; ++i) {
-    const vector<Blob<float>*>& result = caffe_net.ForwardPrefilled();
-    test_score += result[0]->cpu_data()[0];
-    LOG(INFO) << "Batch " << i << ", score: " << result[0]->cpu_data()[0];
+    float iter_loss;
+    const vector<Blob<float>*>& result =
+        caffe_net.Forward(bottom_vec, &iter_loss);
+    loss += iter_loss;
+    int idx = 0;
+    for (int j = 0; j < result.size(); ++j) {
+      const float* result_vec = result[j]->cpu_data();
+      for (int k = 0; k < result[j]->count(); ++k, ++idx) {
+        const float score = result_vec[k];
+        if (i == 0) {
+          test_score.push_back(score);
+          test_score_output_id.push_back(j);
+        } else {
+          test_score[idx] += score;
+        }
+        const std::string& output_name = caffe_net.blob_names()[
+            caffe_net.output_blob_indices()[j]];
+        LOG(INFO) << "Batch " << i << ", " << output_name << " = " << score;
+      }
+    }
   }
-  test_score /= FLAGS_iterations;
-  LOG(INFO) << "Score: " << test_score;
+  loss /= FLAGS_iterations;
+  LOG(INFO) << "Loss: " << loss;
+  for (int i = 0; i < test_score.size(); ++i) {
+    const std::string& output_name = caffe_net.blob_names()[
+        caffe_net.output_blob_indices()[test_score_output_id[i]]];
+    const float loss_weight =
+        caffe_net.blob_loss_weights()[caffe_net.output_blob_indices()[i]];
+    std::ostringstream loss_msg_stream;
+    const float mean_score = test_score[i] / FLAGS_iterations;
+    if (loss_weight) {
+      loss_msg_stream << " (* " << loss_weight
+                      << " = " << loss_weight * mean_score << " loss)";
+    }
+    LOG(INFO) << output_name << " = " << mean_score << loss_msg_stream.str();
+  }
 
   return 0;
 }
@@ -153,8 +204,7 @@ int time() {
     Caffe::set_mode(Caffe::CPU);
   }
   // Instantiate the caffe net.
-  Caffe::set_phase(Caffe::TRAIN);
-  Net<float> caffe_net(FLAGS_model);
+  Net<float> caffe_net(FLAGS_model, caffe::TRAIN);
 
   // Do a clean forward and backward pass, so that memory allocation are done
   // and future iterations will be more stable.
@@ -168,8 +218,8 @@ int time() {
   caffe_net.Backward();
 
   const vector<shared_ptr<Layer<float> > >& layers = caffe_net.layers();
-  vector<vector<Blob<float>*> >& bottom_vecs = caffe_net.bottom_vecs();
-  vector<vector<Blob<float>*> >& top_vecs = caffe_net.top_vecs();
+  const vector<vector<Blob<float>*> >& bottom_vecs = caffe_net.bottom_vecs();
+  const vector<vector<Blob<float>*> >& top_vecs = caffe_net.top_vecs();
   const vector<vector<bool> >& bottom_need_backward =
       caffe_net.bottom_need_backward();
   LOG(INFO) << "*** Benchmark begins ***";
@@ -177,35 +227,54 @@ int time() {
   Timer total_timer;
   total_timer.Start();
   Timer forward_timer;
-  forward_timer.Start();
+  Timer backward_timer;
   Timer timer;
+  std::vector<double> forward_time_per_layer(layers.size(), 0.0);
+  std::vector<double> backward_time_per_layer(layers.size(), 0.0);
+  double forward_time = 0.0;
+  double backward_time = 0.0;
+  for (int j = 0; j < FLAGS_iterations; ++j) {
+    Timer iter_timer;
+    iter_timer.Start();
+    forward_timer.Start();
+    for (int i = 0; i < layers.size(); ++i) {
+      timer.Start();
+      // Although Reshape should be essentially free, we include it here
+      // so that we will notice Reshape performance bugs.
+      layers[i]->Reshape(bottom_vecs[i], top_vecs[i]);
+      layers[i]->Forward(bottom_vecs[i], top_vecs[i]);
+      forward_time_per_layer[i] += timer.MicroSeconds();
+    }
+    forward_time += forward_timer.MicroSeconds();
+    backward_timer.Start();
+    for (int i = layers.size() - 1; i >= 0; --i) {
+      timer.Start();
+      layers[i]->Backward(top_vecs[i], bottom_need_backward[i],
+                          bottom_vecs[i]);
+      backward_time_per_layer[i] += timer.MicroSeconds();
+    }
+    backward_time += backward_timer.MicroSeconds();
+    LOG(INFO) << "Iteration: " << j + 1 << " forward-backward time: "
+      << iter_timer.MilliSeconds() << " ms.";
+  }
+  LOG(INFO) << "Average time per layer: ";
   for (int i = 0; i < layers.size(); ++i) {
     const caffe::string& layername = layers[i]->layer_param().name();
-    timer.Start();
-    for (int j = 0; j < FLAGS_iterations; ++j) {
-      layers[i]->Forward(bottom_vecs[i], &top_vecs[i]);
-    }
-    LOG(INFO) << layername << "\tforward: " << timer.MilliSeconds() <<
-        " milli seconds.";
+    LOG(INFO) << std::setfill(' ') << std::setw(10) << layername <<
+      "\tforward: " << forward_time_per_layer[i] / 1000 /
+      FLAGS_iterations << " ms.";
+    LOG(INFO) << std::setfill(' ') << std::setw(10) << layername  <<
+      "\tbackward: " << backward_time_per_layer[i] / 1000 /
+      FLAGS_iterations << " ms.";
   }
-  LOG(INFO) << "Forward pass: " << forward_timer.MilliSeconds() <<
-      " milli seconds.";
-  Timer backward_timer;
-  backward_timer.Start();
-  for (int i = layers.size() - 1; i >= 0; --i) {
-    const caffe::string& layername = layers[i]->layer_param().name();
-    timer.Start();
-    for (int j = 0; j < FLAGS_iterations; ++j) {
-      layers[i]->Backward(top_vecs[i], bottom_need_backward[i],
-                          &bottom_vecs[i]);
-    }
-    LOG(INFO) << layername << "\tbackward: "
-        << timer.MilliSeconds() << " milli seconds.";
-  }
-  LOG(INFO) << "Backward pass: " << backward_timer.MilliSeconds() <<
-      " milli seconds.";
-  LOG(INFO) << "Total Time: " << total_timer.MilliSeconds() <<
-      " milli seconds.";
+  total_timer.Stop();
+  LOG(INFO) << "Average Forward pass: " << forward_time / 1000 /
+    FLAGS_iterations << " ms.";
+  LOG(INFO) << "Average Backward pass: " << backward_time / 1000 /
+    FLAGS_iterations << " ms.";
+  LOG(INFO) << "Average Forward-Backward: " << total_timer.MilliSeconds() /
+    FLAGS_iterations << " ms.";
+  LOG(INFO) << "Total Time: " << total_timer.MilliSeconds() << " ms.";
   LOG(INFO) << "*** Benchmark ends ***";
   return 0;
 }

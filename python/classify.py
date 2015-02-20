@@ -31,13 +31,13 @@ def main(argv):
     parser.add_argument(
         "--model_def",
         default=os.path.join(pycaffe_dir,
-                "../examples/imagenet/imagenet_deploy.prototxt"),
+                "../models/bvlc_reference_caffenet/deploy.prototxt"),
         help="Model definition file."
     )
     parser.add_argument(
         "--pretrained_model",
         default=os.path.join(pycaffe_dir,
-                "../examples/imagenet/caffe_reference_imagenet_model"),
+                "../models/bvlc_reference_caffenet/bvlc_reference_caffenet.caffemodel"),
         help="Trained model weights file."
     )
     parser.add_argument(
@@ -60,8 +60,8 @@ def main(argv):
         "--mean_file",
         default=os.path.join(pycaffe_dir,
                              'caffe/imagenet/ilsvrc_2012_mean.npy'),
-        help="Data set image mean of H x W x K dimensions (numpy array). " +
-             "Set to '' for no mean subtraction."
+        help="Data set image mean of [Channels x Height x Width] dimensions " +
+             "(numpy array). Set to '' for no mean subtraction."
     )
     parser.add_argument(
         "--input_scale",

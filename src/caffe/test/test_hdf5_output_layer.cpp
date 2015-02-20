@@ -11,9 +11,6 @@
 
 #include "caffe/test/test_caffe_main.hpp"
 
-using std::string;
-using std::vector;
-
 namespace caffe {
 
 template<typename TypeParam>
@@ -22,14 +19,15 @@ class HDF5OutputLayerTest : public MultiDeviceTest<TypeParam> {
 
  protected:
   HDF5OutputLayerTest()
-      : output_file_name_(tmpnam(NULL)),
-        input_file_name_("src/caffe/test/test_data/sample_data.h5"),
+      : input_file_name_(
+        CMAKE_SOURCE_DIR "caffe/test/test_data/sample_data.h5"),
         blob_data_(new Blob<Dtype>()),
         blob_label_(new Blob<Dtype>()),
         num_(5),
         channels_(8),
         height_(5),
         width_(5) {
+    MakeTempFilename(&output_file_name_);
   }
 
   virtual ~HDF5OutputLayerTest() {
@@ -94,9 +92,9 @@ TYPED_TEST(HDF5OutputLayerTest, TestForward) {
   //   the output hdf5 file is closed.
   {
     HDF5OutputLayer<Dtype> layer(param);
+    layer.SetUp(this->blob_bottom_vec_, this->blob_top_vec_);
     EXPECT_EQ(layer.file_name(), this->output_file_name_);
-    layer.SetUp(this->blob_bottom_vec_, &this->blob_top_vec_);
-    layer.Forward(this->blob_bottom_vec_, &this->blob_top_vec_);
+    layer.Forward(this->blob_bottom_vec_, this->blob_top_vec_);
   }
   file_id = H5Fopen(this->output_file_name_.c_str(), H5F_ACC_RDONLY,
                           H5P_DEFAULT);

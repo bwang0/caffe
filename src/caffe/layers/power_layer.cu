@@ -8,15 +8,15 @@
 namespace caffe {
 
 template <typename Dtype>
-Dtype PowerLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom,
-    vector<Blob<Dtype>*>* top) {
-  Dtype* top_data = (*top)[0]->mutable_gpu_data();
+void PowerLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom,
+    const vector<Blob<Dtype>*>& top) {
+  Dtype* top_data = top[0]->mutable_gpu_data();
   const int count = bottom[0]->count();
   // Special case where we can ignore the input: scale or power is 0.
   if (diff_scale_ == Dtype(0)) {
     Dtype value = (power_ == 0) ? Dtype(1) : pow(shift_, power_);
     caffe_gpu_set(count, value, top_data);
-    return Dtype(0);
+    return;
   }
   const Dtype* bottom_data = bottom[0]->gpu_data();
   caffe_copy(count, bottom_data, top_data);
@@ -29,21 +29,20 @@ Dtype PowerLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom,
   if (power_ != Dtype(1)) {
     caffe_gpu_powx(count, top_data, power_, top_data);
   }
-  return Dtype(0);
 }
 
 template <typename Dtype>
 void PowerLayer<Dtype>::Backward_gpu(const vector<Blob<Dtype>*>& top,
     const vector<bool>& propagate_down,
-    vector<Blob<Dtype>*>* bottom) {
+    const vector<Blob<Dtype>*>& bottom) {
   if (propagate_down[0]) {
-    Dtype* bottom_diff = (*bottom)[0]->mutable_gpu_diff();
-    const int count = (*bottom)[0]->count();
+    Dtype* bottom_diff = bottom[0]->mutable_gpu_diff();
+    const int count = bottom[0]->count();
     const Dtype* top_diff = top[0]->gpu_diff();
     if (diff_scale_ == Dtype(0) || power_ == Dtype(1)) {
       caffe_gpu_set(count, diff_scale_, bottom_diff);
     } else {
-      const Dtype* bottom_data = (*bottom)[0]->gpu_data();
+      const Dtype* bottom_data = bottom[0]->gpu_data();
       // Compute dy/dx = scale * power * (shift + scale * x)^(power - 1)
       //               = diff_scale * y / (shift + scale * x)
       if (power_ == Dtype(2)) {
@@ -82,7 +81,7 @@ void PowerLayer<Dtype>::Backward_gpu(const vector<Blob<Dtype>*>& top,
   }
 }
 
-INSTANTIATE_CLASS(PowerLayer);
+INSTANTIATE_LAYER_GPU_FUNCS(PowerLayer);
 
 
 }  // namespace caffe
