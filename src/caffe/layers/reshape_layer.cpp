@@ -109,5 +109,6 @@ STUB_GPU(ReshapeLayer);
 #endif
 
 INSTANTIATE_CLASS(ReshapeLayer);
+REGISTER_LAYER_CLASS(Reshape);
 
 }  // namespace caffe

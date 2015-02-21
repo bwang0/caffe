@@ -18,6 +18,6 @@ void ReshapeLayer<Dtype>::Backward_gpu(const vector<Blob<Dtype>*>& top,
   bottom[0]->ShareDiff(*top[0]);
 }
 
-INSTANTIATE_CLASS(ReshapeLayer);
+INSTANTIATE_LAYER_GPU_FUNCS(ReshapeLayer);
 
 }  // namespace caffe

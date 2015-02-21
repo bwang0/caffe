@@ -318,6 +318,10 @@ message LayerParameter {
   optional TanHParameter tanh_param = 127;
   optional ThresholdParameter threshold_param = 128;
   optional WindowDataParameter window_data_param = 129;
+
+  optional ReshapeParameter reshape_param = 140;
+  optional UpsamplingParameter upsampling_param = 141;
+  optional UnpoolingParameter unpooling_param = 142;
 }
 
 // Message that stores parameters used to apply transformation
@@ -719,6 +723,51 @@ message WindowDataParameter {
   optional string root_folder = 13 [default = ""];
 }
 
+
+// Message that stores parameters used by ReshapeLayer
+message ReshapeParameter {
+  // Specify the output dimensions. If some of the following parameters are
+  // omitted or set to 0 explicitly, the corresponding dimension from the bottom
+  // layer is used (unchanged). Also, if exactly one of them is set to -1, its
+  // value is calculated from the count of the bottom layer and the remaining
+  // dimensions, if possible.
+  optional int32 num = 1 [default = 0];
+  optional int32 channels = 2 [default = 0];
+  optional int32 height = 3 [default = 0];
+  optional int32 width = 4 [default = 0];
+}
+
+// Message that stores parameters used by UpsamplingLayer
+message UpsamplingParameter {
+  // Kernel size is given as a single value for equal
+  // dimensions in height and width or as Y, X pairs.
+  optional uint32 kernel_size = 1 [default = 2]; // The kernel size (square)
+  optional uint32 kernel_h = 2 [default = 2]; // The kernel height
+  optional uint32 kernel_w = 3 [default = 2]; // The kernel width
+}
+
+// Message that stores parameters used by UnpoolingLayer
+message UnpoolingParameter {
+  enum UnpoolMethod {
+    MAX = 0;
+    AVE = 1;
+    STOCHASTIC = 2;
+  }
+  optional UnpoolMethod unpool = 1 [default = MAX]; // The unpooling method
+  // Pad, kernel size, and stride are all given as a single value for equal
+  // dimensions in height and width or as Y, X pairs.
+  optional uint32 pad = 4 [default = 0]; // The padding size (equal in Y, X)
+  optional uint32 pad_h = 9 [default = 0]; // The padding height
+  optional uint32 pad_w = 10 [default = 0]; // The padding width
+  optional uint32 kernel_size = 2; // The kernel size (square)
+  optional uint32 kernel_h = 5; // The kernel height
+  optional uint32 kernel_w = 6; // The kernel width
+  optional uint32 stride = 3 [default = 1]; // The stride (equal in Y, X)
+  optional uint32 stride_h = 7; // The stride height
+  optional uint32 stride_w = 8; // The stride width
+}
+
+
 // DEPRECATED: use LayerParameter.
 message V1LayerParameter {
   repeated string bottom = 2;
@@ -767,6 +816,10 @@ message V1LayerParameter {
     TANH = 23;
     WINDOW_DATA = 24;
     THRESHOLD = 31;
+
+    //RESHAPE = 40;
+    //UPSAMPLING = 41;
+    //UNPOOLING = 42;
   }
   optional LayerType type = 5;
   repeated BlobProto blobs = 6;
@@ -810,19 +863,10 @@ message V1LayerParameter {
   optional TransformationParameter transform_param = 36;
   optional LossParameter loss_param = 42;
   optional V0LayerParameter layer = 1;
-}
 
-// Message that stores parameters used by ReshapeLayer
-message ReshapeParameter {
-  // Specify the output dimensions. If some of the following parameters are
-  // omitted or set to 0 explicitly, the corresponding dimension from the bottom
-  // layer is used (unchanged). Also, if exactly one of them is set to -1, its
-  // value is calculated from the count of the bottom layer and the remaining
-  // dimensions, if possible.
-  optional int32 num = 1 [default = 0];
-  optional int32 channels = 2 [default = 0];
-  optional int32 height = 3 [default = 0];
-  optional int32 width = 4 [default = 0];
+  //optional ReshapeParameter reshape_param = 50;
+  //optional UpsamplingParameter upsampling_param = 51;
+  //optional UnpoolingParameter unpooling_param = 52;
 }
 
 // DEPRECATED: V0LayerParameter is the old way of specifying layer parameters
