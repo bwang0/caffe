@@ -234,7 +234,7 @@ void CVMatToDatum(const cv::Mat& cv_img, Datum* datum) {
 
 bool ReadCroppedImageToDatum(const string& filename, const int label,
     const int height, const int width, const bool is_color, Datum* datum,
-    int row_min, int col_min, int row_max, int col_max) {
+    int row_min, int col_min, int row_max, int col_max, const bool beyond_border) {
   cv::Mat cv_img;
   int cv_read_flag = (is_color ? CV_LOAD_IMAGE_COLOR :
     CV_LOAD_IMAGE_GRAYSCALE);
@@ -245,17 +245,41 @@ bool ReadCroppedImageToDatum(const string& filename, const int label,
     cv::resize(cv_img_origin, cv_img, cv::Size(width, height));
   } else {
     cv::Mat cv_img_origin = cv::imread(filename, cv_read_flag);
-    if(row_min < 0) row_min = 0;
-    if(col_min < 0) col_min = 0;
-    if(row_max > cv_img_origin.rows) row_max = cv_img_origin.rows;
-    if(col_max > cv_img_origin.cols) col_max = cv_img_origin.cols;
+
+    if(beyond_border){
+      //if crop goes beyond image border, fill that portion with zero
+      int roi_r_min = row_min;
+      int roi_c_min = col_min;
+      int roi_r_max = row_max;
+      int roi_c_max = col_max;
+      if(row_min < 0) roi_r_min = 0;
+      if(col_min < 0) roi_c_min = 0;
+      if(row_max > cv_img_origin.rows) roi_r_max = cv_img_origin.rows;
+      if(col_max > cv_img_origin.cols) roi_c_max = cv_img_origin.cols;
+
+      cv::Rect roi(roi_c_min, roi_r_min, roi_c_max-roi_c_min, roi_r_max-roi_r_min);
+      cv::Mat fit_roi = cv_img_origin(roi);
+
+      cv::Mat crop_img = cv::Mat::zeros(row_max-row_min, col_max-col_min, CV_8UC3);
+      cv::Rect crop_roi(roi_c_min-col_min, roi_r_min-row_min, roi_c_max-roi_c_min, roi_r_max-roi_r_min);
+      cv::Mat crop_patch_dest = crop_img(crop_roi);
+      fit_roi.copyTo(crop_patch_dest);
+
+      cv::resize(crop_img, cv_img, cv::Size(width, height));
+    } else{
+      //shrink the crop to image border
+      if(row_min < 0) row_min = 0;
+      if(col_min < 0) col_min = 0;
+      if(row_max > cv_img_origin.rows) row_max = cv_img_origin.rows;
+      if(col_max > cv_img_origin.cols) col_max = cv_img_origin.cols;
+
+      cv::Rect roi(col_min, row_min, col_max-col_min, row_max-row_min);
+      cv::resize(cv_img_origin(roi), cv_img, cv::Size(width, height), 0, 0, cv::INTER_NEAREST);
+    }
 
     //std::cout<<filename<<std::endl;
     //std::cout<<row_min<<" "<<col_min<<" "<<row_max<<" "<<col_max<<std::endl;
     //std::cout<<cv_img_origin.rows<<" "<<cv_img_origin.cols<<std::endl;
-
-    cv::Rect roi(col_min, row_min, col_max-col_min, row_max-row_min);
-    cv::resize(cv_img_origin(roi), cv_img, cv::Size(width, height));
   }
   
   if (!cv_img.data) {

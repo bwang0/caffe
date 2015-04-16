@@ -93,7 +93,7 @@ inline bool ReadFileToDatum(const string& filename, Datum* datum) {
 
 bool ReadCroppedImageToDatum(const string& filename, const int label,
     const int height, const int width, const bool is_color, Datum* datum,
-    const int row_min, const int col_min, const int row_max, const int col_max);
+    const int row_min, const int col_min, const int row_max, const int col_max, const bool beyond_border);
 
 bool ReadImageToDatum(const string& filename, const int label,
     const int height, const int width, const bool is_color,

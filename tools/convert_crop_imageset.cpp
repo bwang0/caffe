@@ -46,7 +46,7 @@ int main(int argc, char** argv) {
         " [resize_height] [resize_width]\n");
     return 1;
   }
-
+  typedef int int64;
   // Test whether argv[1] == "-g"
   bool is_color= !(string("-g") == string(argv[1]));
   int  arg_offset = (is_color ? 0 : 1);
@@ -145,7 +145,8 @@ int main(int argc, char** argv) {
         lines[line_id].second[1], //row_min of bbox
         lines[line_id].second[2], //col_min of bbox
         lines[line_id].second[3], //row_max of bbox
-        lines[line_id].second[4]) //col_max of bbox
+        lines[line_id].second[4], //col_max of bbox
+        true) //beyond border flag
       ) {
       continue;
     }
