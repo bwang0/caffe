@@ -78,11 +78,11 @@ void DataLayer<Dtype>::DataLayerSetUp(const vector<Blob<Dtype>*>& bottom,
 // This function is used to create a thread that prefetches the data.
 template <typename Dtype>
 void DataLayer<Dtype>::InternalThreadEntry() {
-  CPUTimer batch_timer;
-  batch_timer.Start();
-  double read_time = 0;
-  double trans_time = 0;
-  CPUTimer timer;
+  //CPUTimer batch_timer;
+  //batch_timer.Start();
+  //double read_time = 0;
+  //double trans_time = 0;
+  //CPUTimer timer;
   CHECK(this->prefetch_data_.count());
   CHECK(this->transformed_data_.count());
 
@@ -113,7 +113,7 @@ void DataLayer<Dtype>::InternalThreadEntry() {
     top_label = this->prefetch_label_.mutable_cpu_data();
   }
   for (int item_id = 0; item_id < batch_size; ++item_id) {
-    timer.Start();
+    //timer.Start();
     // get a blob
     Datum datum;
     datum.ParseFromString(cursor_->value());
@@ -132,8 +132,8 @@ void DataLayer<Dtype>::InternalThreadEntry() {
         << "convert_imageset.";
       }
     }
-    read_time += timer.MicroSeconds();
-    timer.Start();
+    //read_time += timer.MicroSeconds();
+    //timer.Start();
 
     // Apply data transformations (mirror, scale, crop...)
     int offset = this->prefetch_data_.offset(item_id);
@@ -146,7 +146,7 @@ void DataLayer<Dtype>::InternalThreadEntry() {
     if (this->output_labels_) {
       top_label[item_id] = datum.label();
     }
-    trans_time += timer.MicroSeconds();
+    //trans_time += timer.MicroSeconds();
     // go to the next iter
     cursor_->Next();
     if (!cursor_->valid()) {
@@ -154,10 +154,10 @@ void DataLayer<Dtype>::InternalThreadEntry() {
       cursor_->SeekToFirst();
     }
   }
-  batch_timer.Stop();
-  DLOG(INFO) << "Prefetch batch: " << batch_timer.MilliSeconds() << " ms.";
-  DLOG(INFO) << "     Read time: " << read_time / 1000 << " ms.";
-  DLOG(INFO) << "Transform time: " << trans_time / 1000 << " ms.";
+  //batch_timer.Stop();
+  //DLOG(INFO) << "Prefetch batch: " << batch_timer.MilliSeconds() << " ms.";
+  //DLOG(INFO) << "     Read time: " << read_time / 1000 << " ms.";
+  //DLOG(INFO) << "Transform time: " << trans_time / 1000 << " ms.";
 }
 
 INSTANTIATE_CLASS(DataLayer);
