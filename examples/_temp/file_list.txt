@@ -1,0 +1,2 @@
+/mnt/neocortex/scratch/bhwang/sharedhome/caffe_ifl/examples/images/cat.jpg 0
+/mnt/neocortex/scratch/bhwang/sharedhome/caffe_ifl/examples/images/fish-bike.jpg 0
